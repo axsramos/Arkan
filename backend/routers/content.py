@@ -6,8 +6,8 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from backend.content import ContentError, create_draft, delete_draft, list_drafts, migrate_content, publish_draft, update_draft
-from backend.arkx import ArkxError, build_export, migrate_exports, read_export, import_items
+from backend.content import ContentError, create_draft, delete_draft, list_drafts, publish_draft, update_draft
+from backend.arkx import ArkxError, build_export, migrate_storage_schema, read_export, import_items
 from backend.library import LibraryError, remove_foreign_content, allow_reimport, get_local_classification, list_comments, list_headers, read_content, set_local_classification
 from backend.native_dialog import save_export_artifact
 from backend.data_store import FORMAT_VERSION, DataStoreError, migrate_data_store, open_data_store, _read_manifest
@@ -73,7 +73,7 @@ def _with_content(request: Request, operation):
 def _open_content_store(key: bytes):
     version = _read_manifest(Path(STORAGE_DIR))["format_version"]
     if version < FORMAT_VERSION:
-        migrate_data_store(Path(STORAGE_DIR), key, FORMAT_VERSION, lambda connection: migrate_exports(connection, version))
+        migrate_data_store(Path(STORAGE_DIR), key, FORMAT_VERSION, lambda connection: migrate_storage_schema(connection, version))
     return open_data_store(Path(STORAGE_DIR), key)
 
 

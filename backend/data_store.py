@@ -13,7 +13,7 @@ from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.activation import ActivationPreparation, ActivationStateError
 
-FORMAT_VERSION = 9
+FORMAT_VERSION = 10
 DATABASE_NAME = "arkan_vault.db"
 MANIFEST_NAME = "manifest.json"
 
@@ -32,7 +32,7 @@ def _connect(database_path: Path, data_key: bytes):
     connection = sqlcipher.connect(database_path)
     try:
         connection.execute("PRAGMA key = \"x'" + data_key.hex() + "'\"")
-        connection.execute("PRAGMA cipher_memory_security = OFF")
+        connection.execute("PRAGMA cipher_memory_security = ON")
         connection.execute("SELECT count(*) FROM sqlite_master").fetchone()
         return connection
     except Exception as error:

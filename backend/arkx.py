@@ -12,7 +12,6 @@ from cryptography.hazmat.primitives.asymmetric import ed25519, x25519
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from backend.protocol import artifact_hash, validate_authorization_v2
-from backend.attachments import AttachmentError, validate_imported_attachment
 
 MAGIC = b"ARKX"
 VERSION = 2
@@ -81,7 +80,7 @@ def _ordered_authorization_chain(available_states: list[dict]) -> list[dict]:
         raise ArkxError('Estado de autorização indisponível.') from error
 
 
-def build_export(connection, identity, mode: str = 'COMPLETA', since: str | None = None, unexported_only: bool = False, data_key: bytes | None = None, attachment_dir=None) -> bytes:
+def build_export(connection, identity, mode: str = 'COMPLETA', since: str | None = None, unexported_only: bool = False) -> bytes:
     """Monta exportação com cadeia de autorização e publicações diretas."""
     if mode not in {'RESUMIDA','COMPLETA'}: raise ArkxError('Modalidade de exportação inválida.')
     public=identity['public_identity']
@@ -98,17 +97,6 @@ def build_export(connection, identity, mode: str = 'COMPLETA', since: str | None
         record={'hash':row[0],'autor_id':row[1],'sequencia':row[2],'tipo':row[3],'artigo_id':row[4],'titulo':row[5],'anterior_hash':row[7],'criado_em':row[10],'assinatura':row[8],'assinatura_cabecalho':row[9]}
         if mode=='COMPLETA': record['corpo']=row[6]
         items.append(record)
-    attachments=[]
-    if mode == 'COMPLETA' and data_key is not None and attachment_dir is not None:
-        for row in connection.execute("SELECT attachment_id,article_hash,author_member_id,sequence_number,content_hash,media_type,size_bytes,storage_name,nonce,signature,created_at FROM attachments"):
-            try:
-                encrypted = (attachment_dir / row[7]).read_bytes()
-                raw = AESGCM(data_key).decrypt(row[8], encrypted, row[1].encode('ascii'))
-                if len(raw) != row[6] or hashlib.sha256(raw).hexdigest() != row[4]:
-                    raise ValueError()
-                attachments.append({'id':row[0],'artigo_hash':row[1],'autor_id':row[2],'sequencia':row[3],'hash':row[4],'tipo_mime':row[5],'tamanho':row[6],'assinatura':row[9],'criado_em':row[10],'bytes':raw})
-            except Exception as error:
-                raise ArkxError('Anexo local indisponível.') from error
     export_id=str(uuid4()); key=os.urandom(32); nonce=os.urandom(12)
     anchor_row = connection.execute(
         "SELECT state_artifact FROM authorization_anchors WHERE network_id=?", (public['network_id'],)
@@ -118,7 +106,7 @@ def build_export(connection, identity, mode: str = 'COMPLETA', since: str | None
     if not available_states:
         available_states = [state]
     chain = _ordered_authorization_chain(available_states)
-    compressed=zstandard.ZstdCompressor(level=3).compress(cbor2.dumps({'versao':2,'itens':items,'anexos':attachments,'cadeia_arka':chain},canonical=True))
+    compressed=zstandard.ZstdCompressor(level=3).compress(cbor2.dumps({'versao':2,'itens':items,'anexos':[],'cadeia_arka':chain},canonical=True))
     encrypted=AESGCM(key).encrypt(nonce,compressed,export_id.encode())
     envelopes=[]
     # Um membro revogado também recebe o envelope quando o arquivo lhe for
@@ -135,12 +123,12 @@ def build_export(connection, identity, mode: str = 'COMPLETA', since: str | None
     if len(artifact)>MAX_FILE: raise ArkxError('Exportação excede o limite.')
     return artifact
 
-def migrate_exports(connection, version):
+def migrate_storage_schema(connection, version):
     if version < 9:
         from backend.database import migrate_local_classification_schema
         migrate_local_classification_schema(connection)
-        return
-    raise ArkxError("A versão local não exige migração.")
+    if version < 10:
+        connection.execute("DROP TABLE IF EXISTS attachments")
 
 def read_export(connection, raw: bytes, identity: dict) -> dict:
     """Abre `ARKX v2` em memória, antes de qualquer persistência."""
@@ -187,11 +175,13 @@ def read_export(connection, raw: bytes, identity: dict) -> dict:
     try:
         payload=cbor2.loads(zstandard.ZstdDecompressor().decompress(packed,max_output_size=256*1024*1024))
         if not isinstance(payload,dict) or payload.get('versao')!=2 or not isinstance(payload.get('itens'),list) or not isinstance(payload.get('anexos'),list) or not isinstance(payload.get('cadeia_arka'),list): raise ValueError()
+        if payload['anexos']:
+            raise ArkxError('Esta exportação contém anexos não suportados.')
         return payload
     except Exception as error:
         raise ArkxError('O conteúdo protegido da exportação é inválido.') from error
 
-def import_items(connection, identity: dict, payload: dict, data_key: bytes | None = None, attachment_dir=None) -> dict[str, int]:
+def import_items(connection, identity: dict, payload: dict) -> dict[str, int]:
     """Importa a cadeia v2 antes do conteúdo publicado diretamente."""
     try:
         chain = payload['cadeia_arka']; public = identity['public_identity']
@@ -259,8 +249,6 @@ def import_items(connection, identity: dict, payload: dict, data_key: bytes | No
             'aceitos': 0,
             'duplicados': 0,
             'rejeitados': 0,
-            'anexos_aceitos': 0,
-            'anexos_rejeitados': 0,
             'antecessores_indisponiveis': 0,
         }
     accepted=duplicate=rejected=missing_predecessor=0
@@ -278,33 +266,10 @@ def import_items(connection, identity: dict, payload: dict, data_key: bytes | No
             if 'corpo' in item:
                 if hashlib.sha256(canonical).hexdigest()!=item['hash']: raise ValueError()
                 verifier.verify(item['assinatura'],canonical)
-            if connection.execute("SELECT 1 FROM attachments WHERE author_member_id=? AND sequence_number=?",(item['autor_id'],item['sequencia'])).fetchone(): raise ValueError()
             if connection.execute("SELECT 1 FROM publications WHERE content_hash=?",(item['hash'],)).fetchone(): duplicate+=1; continue
             from backend.library import register_header
             register_header(connection,item)
             if 'corpo' in item: connection.execute("INSERT INTO publications(content_hash,author_member_id,sequence_number,content_type,article_id,title,body,previous_publication_hash,signature,header_signature,created_at,publication_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO')",(item['hash'],item['autor_id'],item['sequencia'],item['tipo'],item['artigo_id'],item['titulo'],item['corpo'],item['anterior_hash'],item['assinatura'],item['assinatura_cabecalho'],item['criado_em']))
             accepted+=1
         except Exception: rejected+=1
-    attachments_accepted=attachments_rejected=0
-    attachments_payload = payload.get('anexos', [])
-    if attachments_payload and (data_key is None or attachment_dir is None):
-        raise ArkxError('Destino de anexos indisponível.')
-    for attachment in attachments_payload:
-        try:
-            required={'id','artigo_hash','autor_id','sequencia','hash','tipo_mime','tamanho','assinatura','criado_em','bytes'}
-            if not isinstance(attachment,dict) or set(attachment) != required or not isinstance(attachment['bytes'],bytes) or len(attachment['bytes']) > 10 * 1024 * 1024 or len(attachment['bytes']) != attachment['tamanho']: raise ValueError()
-            validate_imported_attachment(attachment['bytes'], attachment['tipo_mime'])
-            author=next((m for m in state['membros'] if m['membro_id']==attachment['autor_id']),None)
-            metadata={'versao':1,'rede_id':state['rede_id'],'autor_id':attachment['autor_id'],'tipo':'ANEXO','sequencia':attachment['sequencia'],'artigo_hash':attachment['artigo_hash'],'conteudo_hash':attachment['hash'],'tipo_mime':attachment['tipo_mime'],'tamanho':attachment['tamanho'],'criado_em':attachment['criado_em']}
-            if author is None or (author['status'] == 'REVOGADO' and attachment['criado_em'] >= author['revogado_em']) or hashlib.sha256(attachment['bytes']).hexdigest()!=attachment['hash']: raise ValueError()
-            ed25519.Ed25519PublicKey.from_public_bytes(author['chave_assinatura']).verify(attachment['assinatura'],cbor2.dumps(metadata,canonical=True))
-            if connection.execute('SELECT 1 FROM attachments WHERE content_hash=?',(attachment['hash'],)).fetchone(): continue
-            if connection.execute("SELECT 1 FROM content_headers WHERE author_member_id=? AND sequence_number=?",(attachment['autor_id'],attachment['sequencia'])).fetchone() or connection.execute("SELECT 1 FROM attachments WHERE author_member_id=? AND sequence_number=?",(attachment['autor_id'],attachment['sequencia'])).fetchone(): raise ValueError()
-            if connection.execute("SELECT 1 FROM publications WHERE content_hash=? AND content_type='ARTIGO'",(attachment['artigo_hash'],)).fetchone() is None: raise ValueError()
-            attachment_dir.mkdir(parents=True, exist_ok=True); storage_name=f"{attachment['id']}.bin"; nonce=os.urandom(12); final=attachment_dir / storage_name
-            final.write_bytes(AESGCM(data_key).encrypt(nonce,attachment['bytes'],attachment['artigo_hash'].encode('ascii')))
-            connection.execute('INSERT INTO attachments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',(attachment['id'],attachment['artigo_hash'],attachment['autor_id'],attachment['sequencia'],attachment['hash'],attachment['tipo_mime'],attachment['tamanho'],storage_name,nonce,attachment['assinatura'],attachment['criado_em']))
-            attachments_accepted+=1
-        except Exception:
-            attachments_rejected+=1
-    return {'aceitos':accepted,'duplicados':duplicate,'rejeitados':rejected,'anexos_aceitos':attachments_accepted,'anexos_rejeitados':attachments_rejected,'antecessores_indisponiveis':missing_predecessor}
+    return {'aceitos':accepted,'duplicados':duplicate,'rejeitados':rejected,'antecessores_indisponiveis':missing_predecessor}

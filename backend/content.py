@@ -20,15 +20,6 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def migrate_content(connection: Any, version: int) -> int:
-    from backend.database import migrate_member_management_schema, migrate_content_schema
-    if version < 2:
-        migrate_member_management_schema(connection)
-    if version < 3:
-        migrate_content_schema(connection)
-    return 3
-
-
 def _author(connection: Any, identity: dict[str, Any]) -> tuple[str, str]:
     public = identity["public_identity"]
     row = connection.execute("SELECT status FROM members WHERE member_id = ?", (public["member_id"],)).fetchone()
@@ -96,10 +87,10 @@ def publish_draft(connection: Any, identity: dict[str, Any], draft_id: str, conf
     draft = connection.execute("SELECT content_type, article_id, title, body, previous_publication_hash FROM content_drafts WHERE draft_id = ? AND author_member_id = ?", (draft_id, author_id)).fetchone()
     if draft is None:
         raise ContentError("Rascunho indisponível.")
-    sequence = max(
-        connection.execute("SELECT COALESCE(MAX(sequence_number), 0) FROM publications WHERE author_member_id = ?", (author_id,)).fetchone()[0],
-        connection.execute("SELECT COALESCE(MAX(sequence_number), 0) FROM attachments WHERE author_member_id = ?", (author_id,)).fetchone()[0],
-    ) + 1
+    sequence = connection.execute(
+        "SELECT COALESCE(MAX(sequence_number), 0) FROM publications WHERE author_member_id = ?",
+        (author_id,),
+    ).fetchone()[0] + 1
     created_at = _timestamp()
     payload = {"versao": 1, "rede_id": network_id, "autor_id": author_id, "tipo": draft[0], "sequencia": sequence, "artigo_id": draft[1], "titulo": draft[2], "corpo": draft[3], "anterior_hash": draft[4], "criado_em": created_at}
     canonical = cbor2.dumps(payload, canonical=True)

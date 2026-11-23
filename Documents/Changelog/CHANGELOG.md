@@ -6,6 +6,19 @@ O formato segue [Keep a Changelog 1.0.0](https://keepachangelog.com/pt-BR/1.0.0/
 
 ## [Não publicado]
 
+### Removido
+
+- Inicializador legado, dependência sem uso e duplicidades internas sem rota de execução.
+- Suporte parcial a anexos, incluindo esquema, processamento de intercâmbio e migrações inativas.
+
+### Alterado
+
+- Formato local atualizado para remover a tabela legada de anexos por migração com cópia recuperável.
+
+### Segurança
+
+- Proteção de memória do SQLCipher ativada para a abertura da base local.
+
 ## [1.0.0] - 2026-11-14
 
 ### Adicionado

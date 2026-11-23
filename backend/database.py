@@ -38,7 +38,7 @@ def initialize_schema(connection: Any) -> None:
             content_hash TEXT PRIMARY KEY,
             author_member_id TEXT NOT NULL REFERENCES members(member_id),
             sequence_number INTEGER NOT NULL,
-            content_type TEXT NOT NULL CHECK (content_type IN ('ARTIGO', 'COMENTARIO', 'ANEXO')),
+            content_type TEXT NOT NULL CHECK (content_type IN ('ARTIGO', 'COMENTARIO')),
             parent_hash TEXT,
             previous_version_hash TEXT,
             title TEXT,
@@ -103,19 +103,6 @@ def initialize_schema(connection: Any) -> None:
             publication_status TEXT NOT NULL CHECK (publication_status = 'PUBLICADO'),
             UNIQUE(author_member_id, sequence_number)
         );
-        CREATE TABLE IF NOT EXISTS attachments (
-            attachment_id TEXT PRIMARY KEY,
-            article_hash TEXT NOT NULL REFERENCES publications(content_hash),
-            author_member_id TEXT NOT NULL REFERENCES members(member_id),
-            sequence_number INTEGER NOT NULL,
-            content_hash TEXT NOT NULL UNIQUE,
-            media_type TEXT NOT NULL,
-            size_bytes INTEGER NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 10485760),
-            storage_name TEXT NOT NULL UNIQUE,
-            nonce BLOB NOT NULL UNIQUE,
-            signature BLOB NOT NULL,
-            created_at TEXT NOT NULL
-        );
         CREATE TABLE IF NOT EXISTS export_records (
             export_id TEXT PRIMARY KEY, mode TEXT NOT NULL, exported_at TEXT NOT NULL
         );
@@ -143,74 +130,6 @@ def initialize_schema(connection: Any) -> None:
         (str(SCHEMA_VERSION),),
     )
     connection.commit()
-
-
-def migrate_member_management_schema(connection: Any) -> None:
-    """Acrescenta o histórico de autorização sem substituir dados existentes."""
-    connection.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS authorization_states (
-            network_id TEXT NOT NULL REFERENCES networks(network_id),
-            sequence_number INTEGER NOT NULL,
-            state_hash BLOB NOT NULL UNIQUE,
-            state_artifact BLOB NOT NULL,
-            created_at TEXT NOT NULL,
-            PRIMARY KEY (network_id, sequence_number)
-        );
-        """
-    )
-
-
-def migrate_content_schema(connection: Any) -> None:
-    """Acrescenta rascunhos e publicações sem modificar itens existentes."""
-    connection.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS content_drafts (
-            draft_id TEXT PRIMARY KEY,
-            author_member_id TEXT NOT NULL REFERENCES members(member_id),
-            content_type TEXT NOT NULL CHECK (content_type IN ('ARTIGO', 'COMENTARIO')),
-            article_id TEXT,
-            title TEXT,
-            body TEXT NOT NULL,
-            previous_publication_hash TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS publications (
-            content_hash TEXT PRIMARY KEY,
-            author_member_id TEXT NOT NULL REFERENCES members(member_id),
-            sequence_number INTEGER NOT NULL,
-            content_type TEXT NOT NULL CHECK (content_type IN ('ARTIGO', 'COMENTARIO')),
-            article_id TEXT,
-            title TEXT,
-            body TEXT NOT NULL,
-            previous_publication_hash TEXT,
-            signature BLOB NOT NULL,
-            created_at TEXT NOT NULL,
-            certification_status TEXT NOT NULL CHECK (certification_status IN ('PENDENTE_CERTIFICACAO')),
-            UNIQUE(author_member_id, sequence_number)
-        );
-        """
-    )
-
-
-def migrate_attachment_schema(connection: Any) -> None:
-    """Acrescenta metadados de anexo sem tocar em conteúdo persistido."""
-    connection.execute(
-        """CREATE TABLE IF NOT EXISTS attachments (
-            attachment_id TEXT PRIMARY KEY, article_hash TEXT NOT NULL REFERENCES publications(content_hash),
-            author_member_id TEXT NOT NULL REFERENCES members(member_id), content_hash TEXT NOT NULL UNIQUE,
-            media_type TEXT NOT NULL, size_bytes INTEGER NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 10485760),
-            storage_name TEXT NOT NULL UNIQUE, nonce BLOB NOT NULL UNIQUE, created_at TEXT NOT NULL)"""
-    )
-
-
-def migrate_export_schema(connection: Any) -> None:
-    connection.execute("CREATE TABLE IF NOT EXISTS export_records (export_id TEXT PRIMARY KEY, mode TEXT NOT NULL, exported_at TEXT NOT NULL)")
-
-
-def migrate_export_items_schema(connection: Any) -> None:
-    connection.execute("CREATE TABLE IF NOT EXISTS export_items (export_id TEXT NOT NULL REFERENCES export_records(export_id), content_hash TEXT NOT NULL, PRIMARY KEY (export_id, content_hash))")
 
 
 def migrate_local_classification_schema(connection: Any) -> None:

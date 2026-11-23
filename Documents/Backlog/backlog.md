@@ -2,7 +2,6 @@
 
 ## Pendências de produto e arquitetura
 
-- **Anexos:** há estruturas internas parciais de armazenamento e intercâmbio no backend, mas não existe fluxo oficial de criação, consulta ou visualização. Decidir entre removê-las ou definir escopo, formato, limites, segurança e testes antes de disponibilizá-las.
 - **Leitura restrita:** definir autorização explícita por leitor e limite de conteúdo antes de implementar a leitura parcial de publicações.
 - **Papéis e governança:** definir o papel de Conselheiro, quórum, desempate e sucessão do Guardião antes de implementar mecanismos de governança.
 - **Intercâmbio em rede:** definir transporte, protocolo, canonicalização, revogação e segurança antes de introduzir P2P, Tor, LAN ou sincronização automática.

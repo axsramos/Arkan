@@ -7,7 +7,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.config import storage_is_activated
 from backend.routers import auth, members, content
 
 
@@ -45,12 +44,6 @@ def root():
 @app.get("/favicon.ico")
 def favicon():
     return RedirectResponse(url="/static/favicon.ico")
-
-
-@app.get("/api/v1/node/check-setup")
-def check_node_setup() -> dict[str, bool]:
-    return {"is_configured": storage_is_activated()}
-
 
 @app.get("/api/v1/health")
 def health_check() -> dict[str, str]:

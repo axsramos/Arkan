@@ -1,7 +1,5 @@
 """Controles locais de acervo sem propagação de remoções."""
 
-from pathlib import Path
-
 import cbor2
 
 class LibraryError(RuntimeError): pass
@@ -28,19 +26,12 @@ def register_header(connection, item: dict) -> None:
     connection.execute("INSERT OR IGNORE INTO content_headers(content_hash,author_member_id,sequence_number,content_type,parent_hash,previous_version_hash,title,created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (item['hash'],item['autor_id'],item['sequencia'],item['tipo'],item.get('artigo_id'),item.get('anterior_hash'),item.get('titulo'),item['criado_em']))
     connection.execute("INSERT OR IGNORE INTO local_content_control(content_hash) VALUES (?)",(item['hash'],))
 
-def remove_foreign_content(connection, local_member_id: str, role: str, content_hash: str, attachment_dir: Path | None = None) -> None:
+def remove_foreign_content(connection, local_member_id: str, role: str, content_hash: str) -> None:
     row=connection.execute("SELECT author_member_id FROM content_headers WHERE content_hash=?",(content_hash,)).fetchone()
     if row is None or row[0]==local_member_id or role=='GUARDIAO':
         raise LibraryError('Remoção local não permitida.')
-    attachment_names = [
-        row[0] for row in connection.execute("SELECT storage_name FROM attachments WHERE article_hash=?", (content_hash,))
-    ]
-    connection.execute("DELETE FROM attachments WHERE article_hash=?", (content_hash,))
     connection.execute("DELETE FROM publications WHERE content_hash=?", (content_hash,))
     connection.execute("UPDATE local_content_control SET removed_locally=1 WHERE content_hash=?",(content_hash,))
-    if attachment_dir is not None:
-        for storage_name in attachment_names:
-            (attachment_dir / storage_name).unlink(missing_ok=True)
 
 def allow_reimport(connection, content_hash: str) -> None:
     if connection.execute("UPDATE local_content_control SET removed_locally=0 WHERE content_hash=?",(content_hash,)).rowcount != 1:
@@ -56,23 +47,34 @@ def list_headers(connection, local_member_id: str, membership_status: str, netwo
             SELECT p.content_hash,p.author_member_id,p.sequence_number,p.content_type,p.article_id,p.previous_publication_hash,p.title,p.created_at
             FROM publications p
             WHERE NOT EXISTS (SELECT 1 FROM content_headers h WHERE h.content_hash=p.content_hash)
+        ), comment_counts AS (
+            SELECT parent_hash, COUNT(DISTINCT content_hash) AS total
+            FROM known_headers
+            WHERE content_type='COMENTARIO'
+            GROUP BY parent_hash
         )
         SELECT h.content_hash,h.author_member_id,h.sequence_number,h.content_type,h.title,h.created_at,COALESCE(c.removed_locally,0),
         EXISTS(SELECT 1 FROM publications p WHERE p.content_hash=h.content_hash),category.category,
-        (SELECT COUNT(DISTINCT comments.content_hash) FROM known_headers comments WHERE comments.content_type='COMENTARIO' AND comments.parent_hash=h.content_hash),
+        COALESCE(comment_counts.total, 0),
         EXISTS(SELECT 1 FROM export_items exports WHERE exports.content_hash=h.content_hash)
         FROM known_headers h
         LEFT JOIN local_content_control c ON c.content_hash=h.content_hash
-        LEFT JOIN local_article_categories category ON category.article_hash=h.content_hash"""
+        LEFT JOIN local_article_categories category ON category.article_hash=h.content_hash
+        LEFT JOIN comment_counts ON comment_counts.parent_hash=h.content_hash"""
     parameters: tuple = ()
     if membership_status != 'ATIVO':
         query += " WHERE h.author_member_id=?"
         parameters = (local_member_id,)
     query += " ORDER BY h.created_at DESC"
     pseudonyms = _pseudonyms(connection, network_id)
+    badges_by_article: dict[str, list[str]] = {}
+    for article_hash, label in connection.execute(
+        "SELECT article_hash,label FROM local_article_badges ORDER BY article_hash, label COLLATE NOCASE"
+    ):
+        badges_by_article.setdefault(article_hash, []).append(label)
     headers = []
     for row in connection.execute(query, parameters):
-        badges = [badge[0] for badge in connection.execute("SELECT label FROM local_article_badges WHERE article_hash=? ORDER BY label COLLATE NOCASE", (row[0],))] if row[3] == 'ARTIGO' else []
+        badges = badges_by_article.get(row[0], []) if row[3] == 'ARTIGO' else []
         headers.append({"hash": row[0], "autor_id": row[1], "autor_pseudonimo": pseudonyms.get(row[1]), "sequencia": row[2], "tipo": row[3], "titulo": row[4], "criado_em": row[5], "removido_localmente": bool(row[6]), "tem_corpo": bool(row[7]), "categoria": row[8], "comentarios": row[9], "exportado": bool(row[10]), "badges": badges, "proprio": row[1] == local_member_id})
     return headers
 

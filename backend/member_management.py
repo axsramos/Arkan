@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from backend.database import migrate_member_management_schema
 from backend.protocol import (
     ProtocolError,
     artifact_hash,
@@ -93,14 +92,6 @@ def _store_state(connection: Any, state: dict[str, Any], signing_key: bytes) -> 
         (signed["rede_id"], signed["sequencia"], artifact_hash(signed), artifact, signed["emitido_em"]),
     )
     return signed
-
-
-def ensure_member_management_migration(connection: Any, storage_version: int) -> int:
-    """Aplica a única migração local prevista para o histórico `ARKA`."""
-    if storage_version < 2:
-        migrate_member_management_schema(connection)
-        return 2
-    return storage_version
 
 
 def issue_invitation(connection: Any, identity: dict[str, Any], pseudonym: str) -> bytes:

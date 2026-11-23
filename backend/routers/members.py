@@ -83,7 +83,6 @@ async def create_invitation(payload: InvitationPayload, request: Request) -> dic
         raise _error(403, "Ação administrativa não autorizada.")
 
 
-__all__ = ["router"]
 @router.post("/api/v1/members/revoke")
 async def revoke_active_member(payload: IdentifierPayload, request: Request) -> dict[str, str]:
     try:

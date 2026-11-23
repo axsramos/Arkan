@@ -13,10 +13,6 @@ def application_root() -> Path:
 
 BASE_DIR = application_root()
 STORAGE_DIR = BASE_DIR / "data"
-DB_PATH = STORAGE_DIR / "arkan_vault.db"
-FILES_DIR = STORAGE_DIR / "files"
-CREDENTIALS_PATH = STORAGE_DIR / "credentials.json"
-MANIFEST_PATH = STORAGE_DIR / "manifest.json"
 
 
 def storage_is_activated(storage_dir: Path | str = STORAGE_DIR) -> bool:
