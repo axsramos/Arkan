@@ -29,15 +29,38 @@ ENV/
 
 # Database & Local Storage (SQLite and Encrypted Files)
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+*.backup-v*
 data/
 storage/
 *.enc
+vault.json
+credentials.json
+
+# Credenciais e arquivos portáteis locais
+*.arki
+*.arkr
+*.arkx
+*.pem
+*.key
+.env
+.env.*
+!.env.example
 
 # IDEs and Editors
 .idea/
 .vscode/
+.vs/
+*.code-workspace
+*.suo
+*.user
 *.swp
 *.swo
 
@@ -49,12 +72,24 @@ storage/
 .Trashes
 ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # Logs & Temporary files
 *.log
 tmp/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+coverage.xml
+htmlcov/
 
-# Artefatos locais do ambiente de desenvolvimento
+# Artefatos locais de desenvolvimento e distribuição
 .codex-build/
 .codex-finalizer/
 Arkan.spec
+*.exe
+*.manifest
