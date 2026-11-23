@@ -1,0 +1,11 @@
+Arkan 1.0.0
+Build: 2026-11-14 11:31:54
+SHA-256: E2D221F992E7DC3DCF55975D19877DA29F0E2CAAD79D7F31DB3C42926A6CFBCC
+
+1. Execute Arkan.exe em uma pasta local gravável.
+2. Na primeira utilização, o aplicativo criará a pasta data ao lado do executável.
+3. Não copie, publique ou versione a pasta data. Use os fluxos internos de
+   exportação, importação e recuperação para preservar informações.
+4. O aplicativo atende somente em 127.0.0.1 e abrirá o navegador padrão.
+
+Esta distribuição é portátil e não requer instalação de Python ou dependências.
