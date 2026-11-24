@@ -9,6 +9,9 @@ O formato segue [Keep a Changelog 1.0.0](https://keepachangelog.com/pt-BR/1.0.0/
 ### Alterado
 
 - Substituído o favicon genérico por um emblema geométrico plano do Arkan, aplicado à interface no navegador e ao empacotamento Windows futuro.
+- O Acervo agora exige o fluxo local `Rascunho → Revisão → Publicação`; a prévia é somente leitura, a exclusão só é permitida no rascunho e a publicação requer confirmação explícita.
+- A base local foi atualizada para o formato 11, com cópia recuperável antes da migração dos rascunhos existentes.
+
 - Configurado o empacotamento Windows para iniciar sem janela de console; a interface local continua aberta no navegador padrão.
 - Atualizado o diálogo nativo de PIN com a identidade visual da aplicação, mantendo a coleta exclusivamente local.
 - Substituído o comando de bloqueio da interface por encerramento confirmado da cópia local.

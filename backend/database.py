@@ -85,6 +85,7 @@ def initialize_schema(connection: Any) -> None:
             title TEXT,
             body TEXT NOT NULL,
             previous_publication_hash TEXT,
+            review_status TEXT NOT NULL DEFAULT 'RASCUNHO' CHECK (review_status IN ('RASCUNHO', 'EM_REVISAO')),
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -147,6 +148,16 @@ def migrate_local_classification_schema(connection: Any) -> None:
         );
         """
     )
+
+
+def migrate_draft_review_schema(connection: Any) -> None:
+    """Registra a revisão local exigida antes de uma publicação."""
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(content_drafts)")}
+    if "review_status" not in columns:
+        connection.execute(
+            "ALTER TABLE content_drafts ADD COLUMN review_status TEXT NOT NULL DEFAULT 'RASCUNHO' "
+            "CHECK (review_status IN ('RASCUNHO', 'EM_REVISAO'))"
+        )
 
 
 def register_initial_guardian(connection: Any, public_identity: dict[str, str]) -> None:

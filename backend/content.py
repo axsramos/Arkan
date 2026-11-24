@@ -32,15 +32,15 @@ def list_drafts(connection: Any, identity: dict[str, Any]) -> list[dict[str, str
     """Lista somente os rascunhos mutáveis da autoria local."""
     _, author_id = _author(connection, identity)
     rows = connection.execute(
-        """SELECT draft_id,content_type,article_id,title,body,previous_publication_hash,created_at,updated_at
+        """SELECT draft_id,content_type,article_id,title,body,previous_publication_hash,review_status,created_at,updated_at
            FROM content_drafts WHERE author_member_id=? ORDER BY updated_at DESC""",
         (author_id,),
     )
     return [
         {
             "draft_id": row[0], "content_type": row[1], "article_id": row[2],
-            "title": row[3], "body": row[4], "previous_hash": row[5],
-            "created_at": row[6], "updated_at": row[7],
+            "title": row[3], "body": row[4], "previous_hash": row[5], "status": row[6],
+            "created_at": row[7], "updated_at": row[8],
         }
         for row in rows
     ]
@@ -61,7 +61,13 @@ def create_draft(connection: Any, identity: dict[str, Any], content_type: str, t
         if previous is None or previous[0] != author_id or previous[1] != content_type:
             raise ContentError("Versão anterior inválida.")
     now, draft_id = _timestamp(), str(uuid4())
-    connection.execute("INSERT INTO content_drafts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (draft_id, author_id, content_type, article_id, title.strip() if title else None, body, previous_hash, now, now))
+    connection.execute(
+        """INSERT INTO content_drafts(
+            draft_id,author_member_id,content_type,article_id,title,body,
+            previous_publication_hash,review_status,created_at,updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (draft_id, author_id, content_type, article_id, title.strip() if title else None, body, previous_hash, "RASCUNHO", now, now),
+    )
     return {"draft_id": draft_id}
 
 
@@ -70,21 +76,33 @@ def update_draft(connection: Any, identity: dict[str, Any], draft_id: str, title
     row = connection.execute("SELECT content_type, author_member_id FROM content_drafts WHERE draft_id = ?", (draft_id,)).fetchone()
     if row is None or row[1] != author_id or not isinstance(body, str) or not body.strip() or (row[0] == "ARTIGO" and (not isinstance(title, str) or not title.strip())):
         raise ContentError("Rascunho indisponível.")
-    connection.execute("UPDATE content_drafts SET title = ?, body = ?, updated_at = ? WHERE draft_id = ?", (title.strip() if title else None, body, _timestamp(), draft_id))
+    connection.execute("UPDATE content_drafts SET title = ?, body = ?, review_status = 'RASCUNHO', updated_at = ? WHERE draft_id = ?", (title.strip() if title else None, body, _timestamp(), draft_id))
 
 
 def delete_draft(connection: Any, identity: dict[str, Any], draft_id: str) -> None:
     _, author_id = _author(connection, identity)
-    result = connection.execute("DELETE FROM content_drafts WHERE draft_id = ? AND author_member_id = ?", (draft_id, author_id))
+    result = connection.execute("DELETE FROM content_drafts WHERE draft_id = ? AND author_member_id = ? AND review_status = 'RASCUNHO'", (draft_id, author_id))
     if result.rowcount != 1:
         raise ContentError("Rascunho indisponível.")
+
+
+def review_draft(connection: Any, identity: dict[str, Any], draft_id: str) -> None:
+    """Move um rascunho local para a prévia somente leitura."""
+    _, author_id = _author(connection, identity)
+    result = connection.execute(
+        "UPDATE content_drafts SET review_status = 'EM_REVISAO', updated_at = ? "
+        "WHERE draft_id = ? AND author_member_id = ? AND review_status = 'RASCUNHO'",
+        (_timestamp(), draft_id, author_id),
+    )
+    if result.rowcount != 1:
+        raise ContentError("Rascunho indisponível para revisão.")
 
 
 def publish_draft(connection: Any, identity: dict[str, Any], draft_id: str, confirmed: bool) -> dict[str, str | int]:
     network_id, author_id = _author(connection, identity)
     if confirmed is not True:
         raise ContentError("A confirmação de publicação é obrigatória.")
-    draft = connection.execute("SELECT content_type, article_id, title, body, previous_publication_hash FROM content_drafts WHERE draft_id = ? AND author_member_id = ?", (draft_id, author_id)).fetchone()
+    draft = connection.execute("SELECT content_type, article_id, title, body, previous_publication_hash FROM content_drafts WHERE draft_id = ? AND author_member_id = ? AND review_status = 'EM_REVISAO'", (draft_id, author_id)).fetchone()
     if draft is None:
         raise ContentError("Rascunho indisponível.")
     sequence = connection.execute(

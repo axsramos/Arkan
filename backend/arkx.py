@@ -129,6 +129,9 @@ def migrate_storage_schema(connection, version):
         migrate_local_classification_schema(connection)
     if version < 10:
         connection.execute("DROP TABLE IF EXISTS attachments")
+    if version < 11:
+        from backend.database import migrate_draft_review_schema
+        migrate_draft_review_schema(connection)
 
 def read_export(connection, raw: bytes, identity: dict) -> dict:
     """Abre `ARKX v2` em memória, antes de qualquer persistência."""

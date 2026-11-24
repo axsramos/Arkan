@@ -6,7 +6,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from backend.content import ContentError, create_draft, delete_draft, list_drafts, publish_draft, update_draft
+from backend.content import ContentError, create_draft, delete_draft, list_drafts, publish_draft, review_draft, update_draft
 from backend.arkx import ArkxError, build_export, migrate_storage_schema, read_export, import_items
 from backend.library import LibraryError, remove_foreign_content, allow_reimport, get_local_classification, list_comments, list_headers, read_content, set_local_classification
 from backend.native_dialog import save_export_artifact
@@ -182,6 +182,15 @@ async def remove_draft(draft_id: str, payload: DraftActionPayload, request: Requ
     try:
         _with_content(request, lambda connection, identity: delete_draft(connection, identity, draft_id))
         return {"status": "RASCUNHO_EXCLUIDO"}
+    except (VaultError, DataStoreError, ContentError, SessionError) as error:
+        raise _error(error)
+
+
+@router.post("/api/v1/content/drafts/{draft_id}/review")
+async def review(draft_id: str, payload: DraftActionPayload, request: Request) -> dict[str, str]:
+    try:
+        _with_content(request, lambda connection, identity: review_draft(connection, identity, draft_id))
+        return {"status": "EM_REVISAO"}
     except (VaultError, DataStoreError, ContentError, SessionError) as error:
         raise _error(error)
 

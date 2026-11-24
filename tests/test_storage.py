@@ -8,6 +8,7 @@ from backend.activation import prepare_activation
 from backend.database import initialize_schema
 from backend.data_store import DATABASE_NAME, FORMAT_VERSION, DataStoreError, create_data_store, migrate_data_store, open_data_store
 from backend.arkx import migrate_storage_schema
+from backend.content import create_draft
 
 
 class StorageTests(unittest.TestCase):
@@ -87,6 +88,49 @@ class StorageTests(unittest.TestCase):
         connection.close()
         self.assertNotIn("attachments", tables)
         self.assertTrue((self.storage_dir / f"{DATABASE_NAME}.backup-v9").is_file())
+
+    def test_draft_review_migration_preserves_backup(self):
+        manifest_path = self.storage_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["format_version"] = 10
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        migrate_data_store(self.storage_dir, self.key, FORMAT_VERSION, lambda connection: migrate_storage_schema(connection, 10))
+
+        connection = open_data_store(self.storage_dir, self.key)
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(content_drafts)")}
+        connection.close()
+        self.assertIn("review_status", columns)
+        self.assertTrue((self.storage_dir / f"{DATABASE_NAME}.backup-v10").is_file())
+
+    def test_migrated_drafts_accept_a_new_draft(self):
+        connection = open_data_store(self.storage_dir, self.key)
+        connection.execute("DROP TABLE content_drafts")
+        connection.execute(
+            """CREATE TABLE content_drafts (
+                draft_id TEXT PRIMARY KEY, author_member_id TEXT NOT NULL,
+                content_type TEXT NOT NULL, article_id TEXT, title TEXT, body TEXT NOT NULL,
+                previous_publication_hash TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            )"""
+        )
+        connection.commit()
+        connection.close()
+        manifest_path = self.storage_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["format_version"] = 10
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        migrate_data_store(self.storage_dir, self.key, FORMAT_VERSION, lambda store: migrate_storage_schema(store, 10))
+
+        connection = open_data_store(self.storage_dir, self.key)
+        network_id, member_id = "rede", "membro"
+        connection.execute("INSERT INTO networks VALUES (?, ?, ?)", (network_id, member_id, "agora"))
+        connection.execute("INSERT INTO members VALUES (?, ?, ?, ?, 'MEMBRO', 'ATIVO', ?, ?)", (member_id, network_id, "assinatura", "cifragem", "ativacao", "agora"))
+        identity = {"public_identity": {"network_id": network_id, "member_id": member_id}}
+
+        draft = create_draft(connection, identity, "ARTIGO", "Título", "Corpo")
+
+        self.assertEqual(connection.execute("SELECT review_status FROM content_drafts WHERE draft_id=?", (draft["draft_id"],)).fetchone()[0], "RASCUNHO")
+        connection.close()
 
 
 if __name__ == "__main__":

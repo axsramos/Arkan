@@ -13,7 +13,7 @@ from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.activation import ActivationPreparation, ActivationStateError
 
-FORMAT_VERSION = 10
+FORMAT_VERSION = 11
 DATABASE_NAME = "arkan_vault.db"
 MANIFEST_NAME = "manifest.json"
 
