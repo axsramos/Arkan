@@ -22,6 +22,15 @@ def open_browser_when_available(port: int) -> None:
         except OSError:
             time.sleep(0.1)
 
+
+def run_local_server(port: int) -> None:
+    """Executa o serviço local e expõe um encerramento limpo à interface local."""
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    app.state.request_shutdown = lambda: setattr(server, "should_exit", True)
+    threading.Thread(target=open_browser_when_available, args=(port,), daemon=True).start()
+    server.run()
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Arkan - Aplicativo local")
     parser.add_argument(
@@ -34,5 +43,4 @@ if __name__ == '__main__':
 
     port = args.port if args.port > 0 else find_free_port()
 
-    threading.Thread(target=open_browser_when_available, args=(port,), daemon=True).start()
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    run_local_server(port)

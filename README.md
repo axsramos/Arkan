@@ -30,7 +30,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-O navegador padrão abre automaticamente em uma porta disponível de `127.0.0.1`. Para encerrar, use `Ctrl+C`. Caso PowerShell bloqueie a ativação, execute os comandos Python diretamente com `.\venv\Scripts\python.exe`.
+O navegador padrão abre automaticamente em uma porta disponível de `127.0.0.1`. Na aplicação distribuída, use **Encerrar** no menu lateral para finalizar a cópia local; no desenvolvimento, use `Ctrl+C`. Caso PowerShell bloqueie a ativação, execute os comandos Python diretamente com `.\venv\Scripts\python.exe`.
 
 ## Estrutura do projeto
 
@@ -68,10 +68,10 @@ Execute os testes com:
 Para compilar:
 
 ```powershell
-.\venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --name Arkan --add-data "frontend;frontend" main.py
+.\venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --windowed --name Arkan --icon frontend\favicon.ico --add-data "frontend;frontend" main.py
 ```
 
-O empacotamento gera `dist\Arkan.exe`. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.0.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
+O empacotamento gera `dist\Arkan.exe` sem janela de console; a interface continua sendo aberta no navegador padrão. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.0.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
 
 ## Versões e changelog
 

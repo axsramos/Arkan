@@ -168,11 +168,18 @@ async def recover_node(payload: RecoverPayload, response: Response) -> dict[str,
         raise _error(status.HTTP_401_UNAUTHORIZED, "Credencial de acesso incorreta.")
 
 
-@router.post("/api/v1/auth/lock")
-async def lock_node(request: Request, response: Response) -> dict[str, str]:
-    sessions.destroy(request.cookies.get(SESSION_COOKIE))
-    _clear_session_cookie(response)
-    return {"status": "BLOQUEADO"}
+@router.post("/api/v1/application/exit", status_code=status.HTTP_202_ACCEPTED)
+async def exit_application(request: Request) -> dict[str, str]:
+    """Encerra somente a cópia local após confirmar uma sessão ainda ativa."""
+    try:
+        sessions.get(request.cookies.get(SESSION_COOKIE), renew=True)
+    except SessionError as error:
+        raise _error(status.HTTP_401_UNAUTHORIZED, "Sessão local bloqueada.") from error
+    request_shutdown = getattr(request.app.state, "request_shutdown", None)
+    if not callable(request_shutdown):
+        raise _error(status.HTTP_503_SERVICE_UNAVAILABLE, "O encerramento local não está disponível.")
+    request_shutdown()
+    return {"status": "ENCERRANDO"}
 
 
 @router.post("/api/v1/auth/activity")

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arkan</title>
+    <link rel="icon" href="./favicon.png" type="image/png">
     <script src="./assets/vendor/tailwind.min.js"></script>
     <script type="importmap">
       {
@@ -26,9 +27,9 @@
             <aside :class="sidebarCollapsed ? 'sm:w-20' : 'sm:w-64'" class="flex shrink-0 flex-row border-b border-slate-800 bg-slate-900/80 transition-all sm:h-screen sm:flex-col sm:border-b-0 sm:border-r">
                 <div class="flex flex-1 items-center justify-between p-4 sm:flex-none sm:border-b sm:border-slate-800"><div v-if="!sidebarCollapsed" class="flex items-center gap-2"><span class="text-lg font-bold tracking-wider text-cyan-400">ARKAN</span><span class="hidden rounded-full border border-cyan-800/50 bg-cyan-950 px-2 py-0.5 text-[10px] text-cyan-300 lg:inline">Nó local</span></div><button @click="sidebarCollapsed=!sidebarCollapsed" class="hidden rounded-lg bg-slate-800 p-1.5 text-xs text-slate-300 hover:bg-slate-700 sm:block">{{ sidebarCollapsed ? '▶' : '◀' }}</button></div>
                 <nav class="flex flex-1 items-center gap-1 overflow-x-auto px-2 pb-3 sm:block sm:space-y-2 sm:overflow-y-auto sm:p-4"><button @click="currentTab='library'" :class="currentTab==='library' ? activeNav : idleNav" class="nav-button"><span>📰</span><span v-if="!sidebarCollapsed">Acervo</span></button><button @click="openComposer" :class="currentTab==='publish' ? activeNav : idleNav" class="nav-button"><span>✍️</span><span v-if="!sidebarCollapsed">Publicar</span></button><button @click="currentTab='drafts'" :class="currentTab==='drafts' ? activeNav : idleNav" class="nav-button"><span>📝</span><span v-if="!sidebarCollapsed">Rascunhos</span></button><button v-if="role==='GUARDIAO'" @click="currentTab='members'" :class="currentTab==='members' ? activeNav : idleNav" class="nav-button"><span>👥</span><span v-if="!sidebarCollapsed">Membros</span></button></nav>
-                <div class="hidden border-t border-slate-800 p-4 sm:block"><div v-if="!sidebarCollapsed" class="mb-3"><div class="truncate text-xs font-bold text-slate-200">{{ pseudonym }}</div><div class="text-[11px] text-cyan-400">{{ role === 'GUARDIAO' ? 'Guardião' : 'Membro' }}</div><div class="mt-2 flex items-center gap-2 text-[10px] text-slate-400"><div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-cyan-500" :style="{ width: storagePercent + '%' }"></div></div><span>{{ storagePercent }}% em disco</span></div></div><button @click="handleLock" class="w-full rounded-xl bg-slate-800 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700">🔒 <span v-if="!sidebarCollapsed">Bloquear</span></button></div>
+                <div class="hidden border-t border-slate-800 p-4 sm:block"><div v-if="!sidebarCollapsed" class="mb-3"><div class="truncate text-xs font-bold text-slate-200">{{ pseudonym }}</div><div class="text-[11px] text-cyan-400">{{ role === 'GUARDIAO' ? 'Guardião' : 'Membro' }}</div><div class="mt-2 flex items-center gap-2 text-[10px] text-slate-400"><div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-cyan-500" :style="{ width: storagePercent + '%' }"></div></div><span>{{ storagePercent }}% em disco</span></div></div><button @click="endApplication" class="w-full rounded-xl bg-slate-800 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700">⏻ <span v-if="!sidebarCollapsed">Encerrar</span></button></div>
             </aside>
-            <main class="h-[calc(100%-57px)] flex-1 overflow-y-auto p-4 sm:h-screen sm:p-8"><div class="mx-auto max-w-5xl"><content-exchange-component v-if="currentTab==='library'" @open-item="openArticle" @copy-revoked="handleLock"></content-exchange-component><content-composer-component v-else-if="currentTab==='publish'" :context="composerContext"></content-composer-component><content-composer-component v-else-if="currentTab==='drafts'" :drafts-only="true" @open-draft="editDraft"></content-composer-component><guardian-management-component v-else-if="currentTab==='members' && role==='GUARDIAO'"></guardian-management-component><article-detail-view v-else-if="currentTab==='detail'" :item-hash="selectedArticleHash" @back="currentTab='library'" @open-item="openArticle" @compose-comment="composeComment" @compose-version="composeVersion"></article-detail-view></div></main>
+            <main class="h-[calc(100%-57px)] flex-1 overflow-y-auto p-4 sm:h-screen sm:p-8"><div class="mx-auto max-w-5xl"><content-exchange-component v-if="currentTab==='library'" @open-item="openArticle" @copy-revoked="handleSessionExpired"></content-exchange-component><content-composer-component v-else-if="currentTab==='publish'" :context="composerContext"></content-composer-component><content-composer-component v-else-if="currentTab==='drafts'" :drafts-only="true" @open-draft="editDraft"></content-composer-component><guardian-management-component v-else-if="currentTab==='members' && role==='GUARDIAO'"></guardian-management-component><article-detail-view v-else-if="currentTab==='detail'" :item-hash="selectedArticleHash" @back="currentTab='library'" @open-item="openArticle" @compose-comment="composeComment" @compose-version="composeVersion"></article-detail-view></div></main>
         </div>
 
     </div>
@@ -75,11 +76,15 @@
                 const composeComment = (articleId) => { composerContext.value = { contentType: 'COMENTARIO', articleId }; currentTab.value = 'publish' }
                 const composeVersion = (article) => { composerContext.value = { contentType: 'ARTIGO', previousHash: article.hash, title: article.titulo || '' }; currentTab.value = 'publish' }
                 
-                const handleLock = async () => {
-                    await fetch(`${window.location.origin}/api/v1/auth/lock`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+                const handleSessionExpired = () => {
                     isUnlocked.value = false
                     role.value = ''
                     storagePercent.value = 0
+                }
+                const endApplication = async () => {
+                    if (!window.confirm('Encerrar o Arkan? A aplicação local será finalizada.')) return
+                    const response = await fetch(`${window.location.origin}/api/v1/application/exit`, { method: 'POST', credentials: 'same-origin' }).catch(() => null)
+                    if (!response || !response.ok) window.alert('Não foi possível encerrar o Arkan. Tente novamente.')
                 }
                 const loadStorageUsage = async () => {
                     try { const response = await fetch('/api/v1/node/storage', { credentials: 'same-origin' }); const data = await response.json(); if (response.ok) storagePercent.value = Math.max(0, Math.min(100, Number(data.percentual_usado) || 0)); } catch (_) {}
@@ -90,8 +95,8 @@
                     if (!isUnlocked.value || Date.now() - lastActivity < 60000) return
                     lastActivity = Date.now()
                     fetch(`${window.location.origin}/api/v1/auth/activity`, { method: 'POST', credentials: 'same-origin' })
-                        .then(response => { if (!response.ok) handleLock() })
-                        .catch(() => handleLock())
+                        .then(response => { if (!response.ok) handleSessionExpired() })
+                        .catch(() => handleSessionExpired())
                 }
                 for (const eventName of ['click', 'keydown', 'scroll', 'pointerdown']) {
                     window.addEventListener(eventName, renewSessionFromInteraction, { passive: true })
@@ -109,7 +114,7 @@
                     activeNav,
                     idleNav,
                     handleAuthenticated,
-                    handleLock,
+                    endApplication,
                     openArticle,
                     openComposer,
                     editDraft,

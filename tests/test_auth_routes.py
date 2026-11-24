@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -34,19 +34,31 @@ class AuthenticationRouteTests(unittest.TestCase):
         with self.assertRaises(SessionError):
             store.get(token)
 
-    def test_explicit_lock_invalidates_session(self):
-        store = LocalSessionStore()
-        token = store.create(b"dado", {"pseudonym": "Membro"})
-        store.destroy(token)
-        with self.assertRaises(SessionError):
-            store.get(token)
+    def test_exit_requests_clean_shutdown_for_an_active_local_session(self):
+        token = auth.sessions.create(b"dado", {"pseudonym": "Membro"})
+        shutdown = Mock()
+        request = Request({"type": "http", "method": "POST", "path": "/api/v1/application/exit", "scheme": "http", "app": SimpleNamespace(state=SimpleNamespace(request_shutdown=shutdown)), "headers": [(b"cookie", f"{auth.SESSION_COOKIE}={token}".encode())]})
+        try:
+            result = asyncio.run(auth.exit_application(request))
+        finally:
+            auth.sessions.destroy(token)
+        shutdown.assert_called_once_with()
+        self.assertEqual(result["status"], "ENCERRANDO")
+
+    def test_exit_rejects_missing_local_session(self):
+        request = Request({"type": "http", "method": "POST", "path": "/api/v1/application/exit", "scheme": "http", "app": SimpleNamespace(state=SimpleNamespace(request_shutdown=Mock())), "headers": []})
+
+        with self.assertRaises(auth.HTTPException) as error:
+            asyncio.run(auth.exit_application(request))
+
+        self.assertEqual(error.exception.status_code, 401)
 
     def test_mutation_rejects_missing_or_foreign_origin(self):
         async def next_handler(_): return Response(status_code=204)
         def request(origin=None):
             headers = [(b"host", b"127.0.0.1:8765")]
             if origin: headers.append((b"origin", origin.encode()))
-            return Request({"type": "http", "method": "POST", "path": "/api/v1/auth/lock", "scheme": "http", "headers": headers})
+            return Request({"type": "http", "method": "POST", "path": "/api/v1/application/exit", "scheme": "http", "headers": headers})
         self.assertEqual(asyncio.run(require_local_origin_for_mutations(request(), next_handler)).status_code, 403)
         self.assertEqual(asyncio.run(require_local_origin_for_mutations(request("http://127.0.0.1:8765"), next_handler)).status_code, 204)
 

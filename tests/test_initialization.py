@@ -2,9 +2,13 @@ import socket
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from backend.activation import ActivationStateError, prepare_activation
 from backend.config import storage_is_activated
+from backend.main import favicon
+import main as launcher
 from main import find_free_port
 
 
@@ -33,6 +37,27 @@ class InitializationTests(unittest.TestCase):
         port = find_free_port()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
             listener.bind(("127.0.0.1", port))
+
+    def test_favicon_uses_the_new_ico_asset(self):
+        response = favicon()
+
+        self.assertEqual(response.headers["location"], "/static/favicon.ico")
+
+    @patch("main.threading.Thread")
+    @patch("main.uvicorn.Server")
+    @patch("main.uvicorn.Config")
+    def test_local_server_exposes_clean_shutdown_callback(self, config, server, thread):
+        local_app = SimpleNamespace(state=SimpleNamespace())
+        local_server = Mock()
+        server.return_value = local_server
+        with patch.object(launcher, "app", local_app):
+            launcher.run_local_server(8765)
+
+        config.assert_called_once_with(local_app, host="127.0.0.1", port=8765, log_level="info")
+        thread.assert_called_once()
+        local_server.run.assert_called_once_with()
+        local_app.state.request_shutdown()
+        self.assertTrue(local_server.should_exit)
 
 
 if __name__ == "__main__":

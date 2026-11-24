@@ -6,8 +6,16 @@ O formato segue [Keep a Changelog 1.0.0](https://keepachangelog.com/pt-BR/1.0.0/
 
 ## [Não publicado]
 
+### Alterado
+
+- Substituído o favicon genérico por um emblema geométrico plano do Arkan, aplicado à interface no navegador e ao empacotamento Windows futuro.
+- Configurado o empacotamento Windows para iniciar sem janela de console; a interface local continua aberta no navegador padrão.
+- Atualizado o diálogo nativo de PIN com a identidade visual da aplicação, mantendo a coleta exclusivamente local.
+- Substituído o comando de bloqueio da interface por encerramento confirmado da cópia local.
+
 ### Removido
 
+- Bloqueio manual da interface que mantinha a aplicação local em execução.
 - Inicializador legado, dependência sem uso e duplicidades internas sem rota de execução.
 - Suporte parcial a anexos, incluindo esquema, processamento de intercâmbio e migrações inativas.
 

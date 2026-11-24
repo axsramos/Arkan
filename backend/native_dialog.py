@@ -10,6 +10,14 @@ class NativeDialogError(RuntimeError):
     """O diálogo nativo foi cancelado ou não pôde ser apresentado."""
 
 
+_PIN_BACKGROUND = "#020617"
+_PIN_SURFACE = "#0f172a"
+_PIN_BORDER = "#1e293b"
+_PIN_ACCENT = "#22d3ee"
+_PIN_TEXT = "#e2e8f0"
+_PIN_MUTED_TEXT = "#94a3b8"
+
+
 def _root():
     if sys.platform != "win32":
         raise NativeDialogError("Diálogo nativo indisponível nesta plataforma.")
@@ -24,14 +32,88 @@ def _root():
         raise NativeDialogError("Diálogo nativo indisponível.") from error
 
 
+def _is_valid_pin(pin: str | None) -> bool:
+    """Valida o formato do PIN sem registrá-lo nem expô-lo."""
+    return isinstance(pin, str) and pin.isdigit() and 4 <= len(pin) <= 6
+
+
+class _PinDialog:
+    """Coleta o PIN no processo local com a identidade visual do Arkan."""
+
+    def __init__(self, root, title: str, prompt: str):
+        import tkinter as tk
+
+        self._result: str | None = None
+        self._value = tk.StringVar()
+        self._feedback = tk.StringVar()
+        self._window = tk.Toplevel(root, bg=_PIN_BACKGROUND)
+        self._window.title(title)
+        self._window.resizable(False, False)
+        self._window.transient(root)
+        self._window.attributes("-topmost", True)
+        self._window.protocol("WM_DELETE_WINDOW", self._cancel)
+
+        panel = tk.Frame(self._window, bg=_PIN_SURFACE, highlightbackground=_PIN_BORDER, highlightthickness=1)
+        panel.pack(fill="both", expand=True, padx=20, pady=20)
+
+        tk.Label(panel, text="ARKAN", bg=_PIN_SURFACE, fg=_PIN_ACCENT, font=("Segoe UI", 16, "bold")).pack(pady=(24, 4))
+        tk.Label(panel, text="Proteção local", bg=_PIN_SURFACE, fg=_PIN_MUTED_TEXT, font=("Segoe UI", 9)).pack()
+        tk.Label(panel, text=prompt, bg=_PIN_SURFACE, fg=_PIN_TEXT, font=("Segoe UI", 11), wraplength=340, justify="center").pack(padx=28, pady=(22, 12))
+
+        self._entry = tk.Entry(
+            panel,
+            textvariable=self._value,
+            show="•",
+            bg=_PIN_BACKGROUND,
+            fg=_PIN_TEXT,
+            insertbackground=_PIN_TEXT,
+            highlightbackground=_PIN_BORDER,
+            highlightcolor=_PIN_ACCENT,
+            highlightthickness=1,
+            relief="flat",
+            justify="center",
+            font=("Segoe UI", 16),
+            width=18,
+        )
+        self._entry.pack(ipady=9, padx=36)
+        tk.Label(panel, textvariable=self._feedback, bg=_PIN_SURFACE, fg="#fca5a5", font=("Segoe UI", 9)).pack(pady=(8, 0))
+
+        actions = tk.Frame(panel, bg=_PIN_SURFACE)
+        actions.pack(fill="x", padx=28, pady=(14, 24))
+        tk.Button(actions, text="Cancelar", command=self._cancel, bg=_PIN_SURFACE, fg=_PIN_TEXT, activebackground=_PIN_BORDER, activeforeground=_PIN_TEXT, borderwidth=0, font=("Segoe UI", 10), padx=14, pady=8).pack(side="left")
+        tk.Button(actions, text="Continuar", command=self._submit, bg=_PIN_ACCENT, fg=_PIN_BACKGROUND, activebackground="#67e8f9", activeforeground=_PIN_BACKGROUND, borderwidth=0, font=("Segoe UI", 10, "bold"), padx=18, pady=8).pack(side="right")
+
+        self._window.bind("<Return>", self._submit)
+        self._window.bind("<Escape>", self._cancel)
+        self._window.update_idletasks()
+        self._window.geometry(f"420x280+{(self._window.winfo_screenwidth() - 420) // 2}+{(self._window.winfo_screenheight() - 280) // 2}")
+        self._window.grab_set()
+        self._entry.focus_set()
+
+    def show(self) -> str | None:
+        self._window.wait_window()
+        return self._result
+
+    def _submit(self, _event=None) -> None:
+        pin = self._value.get()
+        if not _is_valid_pin(pin):
+            self._feedback.set("Use um PIN de 4 a 6 dígitos.")
+            self._entry.focus_set()
+            return
+        self._result = pin
+        self._window.destroy()
+
+    def _cancel(self, _event=None) -> None:
+        self._result = None
+        self._window.destroy()
+
+
 def collect_pin(title: str, prompt: str = "Informe o PIN local:") -> str:
     """Coleta o PIN apenas pelo diálogo nativo, sem passá-lo ao navegador."""
     root = _root()
     try:
-        from tkinter import simpledialog
-
-        pin = simpledialog.askstring(title, prompt, parent=root, show="*")
-        if not pin or not pin.isdigit() or not 4 <= len(pin) <= 6:
+        pin = _PinDialog(root, title, prompt).show()
+        if not _is_valid_pin(pin):
             raise NativeDialogError("Coleta de PIN cancelada ou inválida.")
         return pin
     finally:
