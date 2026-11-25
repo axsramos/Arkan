@@ -57,6 +57,28 @@ Em Windows, copie uma pasta de versão em `dist` para um pen drive ou outra past
 
 O diretório `data` será criado ao lado do executável durante a ativação. Ele contém o estado local cifrado. Não copie, publique ou versione esse diretório; use os fluxos de exportação e recuperação do aplicativo.
 
+As preferências visuais ficam em `settings.json`, também ao lado do executável. Esse arquivo versionado não contém cofre, PIN, identidade ou outra informação sensível; ele inicia no tema Escuro e preserva escolhas locais, como o tema da interface. A gravação mantém uma cópia anterior em `settings.json.backup`.
+
+### Validação obrigatória de uma distribuição Windows
+
+Antes de disponibilizar uma nova pasta de versão, valide uma cópia dela fora do
+repositório:
+
+1. Execute exatamente `Arkan.exe` da nova pasta de versão. Arquivos com sufixos
+   como `pre-`, `backup` ou outro identificador de preservação não representam a
+   distribuição vigente e não devem ser usados para homologação.
+2. Se houver arquivo de instruções com SHA-256, compare-o com o executável que
+   será testado para confirmar que a cópia é a recém-compilada.
+3. Com um `data` local já ativado, informe o PIN exclusivamente no diálogo nativo
+   local e confirme que o painel abre.
+4. Confirme que o processo `Arkan.exe` continua em execução depois do
+   desbloqueio e que o navegador permanece conectado ao backend local.
+
+No Windows, a distribuição vigente não ativa `cipher_memory_security` do
+SQLCipher, pois essa configuração provoca um encerramento nativo durante a
+abertura do cofre nessa plataforma. A base permanece cifrada; a decisão e sua
+reavaliação estão registradas no [ADR-004](Documents/ADR/ADR-004.md).
+
 ## Testes e distribuição
 
 Execute os testes com:
@@ -68,10 +90,10 @@ Execute os testes com:
 Para compilar:
 
 ```powershell
-.\venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --windowed --name Arkan --icon frontend\favicon.ico --add-data "frontend;frontend" main.py
+.\venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --console --name Arkan --icon frontend\favicon.ico --add-data "frontend;frontend" main.py
 ```
 
-O empacotamento gera `dist\Arkan.exe` sem janela de console; a interface continua sendo aberta no navegador padrão. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.0.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
+O empacotamento gera `dist\Arkan.exe` com uma janela de console visível para registros e diagnóstico. A interface local é aberta no navegador padrão e o serviço atende somente em `127.0.0.1`. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.0.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
 
 ## Versões e changelog
 

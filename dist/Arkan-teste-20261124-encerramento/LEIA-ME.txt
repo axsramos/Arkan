@@ -1,0 +1,12 @@
+Arkan — distribuição de teste
+
+Executável: Arkan.exe
+SHA-256: CA2BF42A952FC6D967D50DDF673087F43DE7C4B125333C1F7B97DD386527792E
+
+Esta distribuição inclui a tela local exibida após a confirmação de Encerrar.
+Para testar, execute Arkan.exe, desbloqueie pelo diálogo nativo local e use
+Encerrar no menu lateral. O painel deve ser substituído por “Aplicação
+encerrada”, sem exibir erros de conexão nas ações seguintes.
+
+Não substitua distribuições já existentes. Esta pasta é independente e pode ser
+copiada para outro local para homologação.

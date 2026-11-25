@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from argon2.low_level import Type, hash_secret_raw
+from argon2.exceptions import HashingError
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
@@ -67,7 +68,10 @@ def _unb64(value: str) -> bytes:
 def _pin_key(pin: str, salt: bytes) -> bytes:
     if not isinstance(pin, str) or not pin.isdigit() or not 4 <= len(pin) <= 6:
         raise VaultError("Credencial de acesso inválida.")
-    return hash_secret_raw(pin.encode("utf-8"), salt, type=Type.ID, **ARGON2_PARAMETERS)
+    try:
+        return hash_secret_raw(pin.encode("utf-8"), salt, type=Type.ID, **ARGON2_PARAMETERS)
+    except HashingError as error:
+        raise VaultError("Não foi possível abrir o cofre local.") from error
 
 
 def _encrypt(key: bytes, plaintext: bytes, associated_data: bytes) -> dict[str, str]:
@@ -264,8 +268,14 @@ def data_key_with_pin(vault: dict[str, Any], pin: str) -> bytes:
 
 def identity_with_pin(vault: dict[str, Any], pin: str) -> dict[str, Any]:
     """Abre a identidade somente no backend para uma ação local autorizada."""
-    data_key = data_key_with_pin(vault, pin)
+    return identity_with_data_key(vault, data_key_with_pin(vault, pin))
+
+
+def identity_with_data_key(vault: dict[str, Any], data_key: bytes) -> dict[str, Any]:
+    """Abre a identidade com a chave já validada, sem repetir a derivação do PIN."""
     try:
+        if not isinstance(data_key, bytes) or len(data_key) != 32:
+            raise ValueError("chave inválida")
         payload = json.loads(_decrypt(data_key, vault["payload"], PAYLOAD_INFO).decode("utf-8"))
         if not isinstance(payload, dict):
             raise ValueError("carga inválida")

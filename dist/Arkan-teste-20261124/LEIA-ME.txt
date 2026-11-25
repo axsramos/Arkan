@@ -1,0 +1,14 @@
+Arkan — distribuição de teste
+Gerada em: 2026-11-24
+Status: não é uma versão publicada
+SHA-256 (Arkan.exe): A7B713ABB6C32EE093FB0B99A9E235CFCB59FCCA152DCB10816BAB37E2FF9508
+
+1. Execute Arkan.exe em uma pasta local gravável.
+2. O console do Windows permanece visível com os registros técnicos; o aplicativo abre a interface no navegador padrão e atende somente em 127.0.0.1.
+3. Use Encerrar no menu lateral para finalizar a cópia local.
+4. Na primeira utilização, a pasta data será criada ao lado do executável.
+5. Não copie, publique ou versione a pasta data. Use os fluxos internos de
+   exportação, importação e recuperação para preservar informações.
+
+Esta distribuição é portátil, não requer instalação de Python ou dependências
+e existe somente para teste. Não substitui a distribuição versionada existente.

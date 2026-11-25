@@ -1,8 +1,10 @@
 import os
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from backend.activation import prepare_activation
 from backend.database import initialize_schema
@@ -20,6 +22,17 @@ class StorageTests(unittest.TestCase):
 
     def tearDown(self):
         self.temporary_directory.cleanup()
+
+    def test_windows_does_not_enable_sqlcipher_memory_security(self):
+        connection = Mock()
+        with patch("backend.data_store.sqlcipher.connect", return_value=connection), patch.object(sys, "platform", "win32"):
+            from backend.data_store import _connect
+
+            _connect(Path("teste.db"), os.urandom(32))
+
+        executed = [call.args[0] for call in connection.execute.call_args_list]
+        self.assertFalse(any("cipher_memory_security" in statement for statement in executed))
+        connection.close.assert_not_called()
 
     def test_database_is_encrypted_and_requires_the_opening_key(self):
         raw_database = (self.storage_dir / DATABASE_NAME).read_bytes()

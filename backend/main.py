@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import auth, members, content
+from backend.routers import auth, members, content, settings
 
 
 @asynccontextmanager
@@ -20,6 +20,7 @@ app = FastAPI(title="Arkan Node", version="1.0.0", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(members.router)
 app.include_router(content.router)
+app.include_router(settings.router)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

@@ -40,9 +40,13 @@ ENV/
 *.backup-v*
 data/
 storage/
+_old_*_data/
 *.enc
 vault.json
 credentials.json
+settings.json
+settings.json.backup
+settings.json.tmp
 
 # Credenciais e arquivos portáteis locais
 *.arki

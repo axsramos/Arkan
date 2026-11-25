@@ -24,7 +24,7 @@ def open_browser_when_available(port: int) -> None:
 
 
 def run_local_server(port: int) -> None:
-    """Executa o serviço local e expõe um encerramento limpo à interface local."""
+    """Executa o serviço local com o console visível para diagnóstico."""
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
     server = uvicorn.Server(config)
     app.state.request_shutdown = lambda: setattr(server, "should_exit", True)

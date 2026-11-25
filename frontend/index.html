@@ -13,25 +13,56 @@
         }
       }
     </script>
-    <style>.nav-button{display:flex;width:100%;align-items:center;gap:.75rem;border-radius:.75rem;padding:.65rem .75rem;font-size:.875rem;font-weight:500;transition:.15s}</style>
+    <style>
+        .nav-button{display:flex;width:100%;align-items:center;gap:.75rem;border-radius:.75rem;padding:.65rem .75rem;font-size:.875rem;font-weight:500;transition:.15s}
+        .theme-light{color:#263442;background:#f4f3ec;color-scheme:light}
+        .theme-light [class~="bg-slate-950"],.theme-light [class~="bg-slate-950/50"]{background-color:#f4f3ec!important}
+        .theme-light [class~="bg-slate-900"],.theme-light [class~="bg-slate-900/80"],.theme-light [class~="bg-slate-900/60"]{background-color:#fffef9!important}
+        .theme-light [class~="bg-slate-800"],.theme-light [class~="bg-slate-800/50"]{background-color:#e5eae7!important}
+        .theme-light [class*="border-slate-"]{border-color:#cbd5d1!important}
+        .theme-light [class~="border-l-emerald-400"]{border-left-color:#16805b!important}
+        .theme-light [class~="border-l-amber-400"]{border-left-color:#b7790a!important}
+        .theme-light [class~="text-slate-100"],.theme-light [class~="text-slate-200"],.theme-light [class~="text-slate-300"]{color:#263442!important}
+        .theme-light [class~="text-slate-400"],.theme-light [class~="text-slate-500"]{color:#53636b!important}
+        .theme-light [class~="text-cyan-400"],.theme-light [class~="text-cyan-300"]{color:#126378!important}
+        .theme-light [class~="bg-cyan-950/50"][class~="text-cyan-200"]{color:#164e5b!important}
+        .theme-light [class~="bg-cyan-950"],.theme-light [class~="bg-cyan-950/50"]{background-color:#dcefeb!important}
+        .theme-light [class~="text-red-300"],.theme-light [class~="text-red-400"],.theme-light [class~="text-rose-400"]{color:#9f2834!important}
+        .theme-light [class*="bg-red-950"]{background-color:#fce9e7!important}
+        .theme-light [class~="text-amber-200"],.theme-light [class~="text-amber-300"]{color:#79510b!important}
+        .theme-light [class~="text-emerald-300"],.theme-light [class~="text-emerald-400"]{color:#126749!important}
+        .theme-light [class*="bg-amber-950"]{background-color:#fbefd2!important}
+        .theme-light input,.theme-light textarea,.theme-light select{color:#263442}
+        .theme-light [class~="hover:bg-slate-800"]:hover,.theme-light [class~="hover:bg-slate-700"]:hover{background-color:#d2dfda!important}
+    </style>
 </head>
 <body class="h-full bg-slate-950 m-0 p-0 font-sans selection:bg-cyan-500 selection:text-white overflow-hidden">
-    <div id="app" class="h-full w-full flex flex-col">
-        
+    <div id="app" class="h-full w-full">
+      <div class="h-full w-full flex flex-col" :class="{ 'theme-light': theme === 'LIGHT' }">
+        <section v-if="isApplicationClosed" class="flex h-full w-full items-center justify-center bg-slate-950 px-6 text-center">
+            <div class="max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/50">
+                <img src="./favicon.png" alt="Arkan" class="mx-auto mb-5 h-16 w-16">
+                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">Arkan</p>
+                <h1 class="mt-3 text-2xl font-bold text-slate-100">Aplicação encerrada</h1>
+                <p class="mt-3 text-sm leading-6 text-slate-400">Esta página não está mais conectada à cópia local do Arkan. Para acessar novamente, feche esta aba e execute <strong class="font-medium text-slate-200">Arkan.exe</strong>.</p>
+            </div>
+        </section>
+
         <auth-view
-            v-if="!isUnlocked"
+            v-else-if="!isUnlocked"
             @authenticated="handleAuthenticated">
         </auth-view>
 
         <div v-else class="h-full w-full bg-slate-950 sm:flex">
             <aside :class="sidebarCollapsed ? 'sm:w-20' : 'sm:w-64'" class="flex shrink-0 flex-row border-b border-slate-800 bg-slate-900/80 transition-all sm:h-screen sm:flex-col sm:border-b-0 sm:border-r">
                 <div class="flex flex-1 items-center justify-between p-4 sm:flex-none sm:border-b sm:border-slate-800"><div v-if="!sidebarCollapsed" class="flex items-center gap-2"><span class="text-lg font-bold tracking-wider text-cyan-400">ARKAN<sub class="ml-0.5 text-[10px] font-medium text-slate-400">v1.0.0</sub></span><span class="hidden rounded-full border border-cyan-800/50 bg-cyan-950 px-2 py-0.5 text-[10px] text-cyan-300 lg:inline">Nó local</span></div><button @click="sidebarCollapsed=!sidebarCollapsed" class="hidden rounded-lg bg-slate-800 p-1.5 text-xs text-slate-300 hover:bg-slate-700 sm:block">{{ sidebarCollapsed ? '▶' : '◀' }}</button></div>
-                <nav class="flex flex-1 items-center gap-1 overflow-x-auto px-2 pb-3 sm:block sm:space-y-2 sm:overflow-y-auto sm:p-4"><button @click="currentTab='library'" :class="currentTab==='library' ? activeNav : idleNav" class="nav-button"><span>📰</span><span v-if="!sidebarCollapsed">Acervo</span></button><button @click="openComposer" :class="currentTab==='publish' ? activeNav : idleNav" class="nav-button"><span>✍️</span><span v-if="!sidebarCollapsed">Publicar</span></button><button @click="currentTab='drafts'" :class="currentTab==='drafts' ? activeNav : idleNav" class="nav-button"><span>📝</span><span v-if="!sidebarCollapsed">Rascunhos</span></button><button v-if="role==='GUARDIAO'" @click="currentTab='members'" :class="currentTab==='members' ? activeNav : idleNav" class="nav-button"><span>👥</span><span v-if="!sidebarCollapsed">Membros</span></button></nav>
+                <nav class="flex flex-1 items-center gap-1 overflow-x-auto px-2 pb-3 sm:block sm:space-y-2 sm:overflow-y-auto sm:p-4"><button @click="currentTab='library'" :class="currentTab==='library' ? activeNav : idleNav" class="nav-button"><span>📰</span><span v-if="!sidebarCollapsed">Acervo</span></button><button @click="openComposer" :class="currentTab==='publish' ? activeNav : idleNav" class="nav-button"><span>✍️</span><span v-if="!sidebarCollapsed">Publicar</span></button><button @click="currentTab='drafts'" :class="currentTab==='drafts' ? activeNav : idleNav" class="nav-button"><span>📝</span><span v-if="!sidebarCollapsed">Rascunhos</span></button><button v-if="role==='GUARDIAO'" @click="currentTab='members'" :class="currentTab==='members' ? activeNav : idleNav" class="nav-button"><span>👥</span><span v-if="!sidebarCollapsed">Membros</span></button><button @click="currentTab='settings'" :class="currentTab==='settings' ? activeNav : idleNav" class="nav-button"><span>⚙️</span><span v-if="!sidebarCollapsed">Configurações</span></button></nav>
                 <div class="hidden border-t border-slate-800 p-4 sm:block"><div v-if="!sidebarCollapsed" class="mb-3"><div class="truncate text-xs font-bold text-slate-200">{{ pseudonym }}</div><div class="text-[11px] text-cyan-400">{{ role === 'GUARDIAO' ? 'Guardião' : 'Membro' }}</div><div class="mt-2 flex items-center gap-2 text-[10px] text-slate-400"><div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800"><div class="h-full rounded-full bg-cyan-500" :style="{ width: storagePercent + '%' }"></div></div><span>{{ storagePercent }}% em disco</span></div></div><button @click="endApplication" class="w-full rounded-xl bg-slate-800 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700">⏻ <span v-if="!sidebarCollapsed">Encerrar</span></button></div>
             </aside>
-            <main class="h-[calc(100%-57px)] flex-1 overflow-y-auto p-4 sm:h-screen sm:p-8"><div class="mx-auto max-w-5xl"><content-exchange-component v-if="currentTab==='library'" @open-item="openArticle" @copy-revoked="handleSessionExpired"></content-exchange-component><content-composer-component v-else-if="currentTab==='publish'" :context="composerContext"></content-composer-component><content-composer-component v-else-if="currentTab==='drafts'" :drafts-only="true" @open-draft="editDraft"></content-composer-component><guardian-management-component v-else-if="currentTab==='members' && role==='GUARDIAO'"></guardian-management-component><article-detail-view v-else-if="currentTab==='detail'" :item-hash="selectedArticleHash" @back="currentTab='library'" @open-item="openArticle" @compose-comment="composeComment" @compose-version="composeVersion"></article-detail-view></div></main>
+            <main class="h-[calc(100%-57px)] flex-1 overflow-y-auto p-4 sm:h-screen sm:p-8"><div class="mx-auto max-w-5xl"><content-exchange-component v-if="currentTab==='library'" @open-item="openArticle" @copy-revoked="handleSessionExpired"></content-exchange-component><content-composer-component v-else-if="currentTab==='publish'" :context="composerContext"></content-composer-component><content-composer-component v-else-if="currentTab==='drafts'" :drafts-only="true" @open-draft="editDraft"></content-composer-component><guardian-management-component v-else-if="currentTab==='members' && role==='GUARDIAO'"></guardian-management-component><settings-component v-else-if="currentTab==='settings'" :theme="theme" @theme-changed="updateTheme"></settings-component><article-detail-view v-else-if="currentTab==='detail'" :item-hash="selectedArticleHash" @back="currentTab='library'" @open-item="openArticle" @compose-comment="composeComment" @compose-version="composeVersion"></article-detail-view></div></main>
         </div>
 
+      </div>
     </div>
 
     <!-- Script Principal Vue 3 -->
@@ -39,9 +70,10 @@
         import { createApp, ref } from 'vue'
         import AuthView from './components/auth/AuthView.js?v=20261107'
         import GuardianManagementComponent from './components/members/GuardianManagementComponent.js?v=20261108'
-        import ContentExchangeComponent from './components/content/ContentExchangeComponent.js?v=20261111-exportacao-2'
+        import ContentExchangeComponent from './components/content/ContentExchangeComponent.js?v=20261124-legenda-1'
         import ContentComposerComponent from './components/content/ContentComposerComponent.js?v=20261124-revisao-2'
         import ArticleDetailView from './components/articles/ArticleDetailView.js?v=20261109b'
+        import SettingsComponent from './components/settings/SettingsComponent.js?v=20261124'
 
         createApp({
             components: {
@@ -49,7 +81,8 @@
                 GuardianManagementComponent,
                 ContentExchangeComponent,
                 ContentComposerComponent,
-                ArticleDetailView
+                ArticleDetailView,
+                SettingsComponent
             },
             setup() {
                 const isUnlocked = ref(false)
@@ -60,6 +93,8 @@
                 const composerContext = ref(null)
                 const sidebarCollapsed = ref(false)
                 const storagePercent = ref(0)
+                const isApplicationClosed = ref(false)
+                const theme = ref('DARK')
                 const activeNav = 'bg-cyan-700 text-white shadow-md shadow-cyan-950'
                 const idleNav = 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
 
@@ -75,6 +110,15 @@
                 const editDraft = (draft) => { composerContext.value = { draft }; currentTab.value = 'publish' }
                 const composeComment = (articleId) => { composerContext.value = { contentType: 'COMENTARIO', articleId }; currentTab.value = 'publish' }
                 const composeVersion = (article) => { composerContext.value = { contentType: 'ARTIGO', previousHash: article.hash, title: article.titulo || '' }; currentTab.value = 'publish' }
+                const updateTheme = (value) => { theme.value = value }
+                const loadSettings = async () => {
+                    try {
+                        const response = await fetch('/api/v1/settings', { credentials: 'same-origin' })
+                        const settings = await response.json()
+                        if (response.ok && ['DARK', 'LIGHT'].includes(settings?.appearance?.theme)) theme.value = settings.appearance.theme
+                    } catch (_) {}
+                }
+                loadSettings()
                 
                 const handleSessionExpired = () => {
                     isUnlocked.value = false
@@ -84,7 +128,11 @@
                 const endApplication = async () => {
                     if (!window.confirm('Encerrar o Arkan? A aplicação local será finalizada.')) return
                     const response = await fetch(`${window.location.origin}/api/v1/application/exit`, { method: 'POST', credentials: 'same-origin' }).catch(() => null)
-                    if (!response || !response.ok) window.alert('Não foi possível encerrar o Arkan. Tente novamente.')
+                    if (!response || !response.ok) {
+                        window.alert('Não foi possível encerrar o Arkan. Tente novamente.')
+                        return
+                    }
+                    isApplicationClosed.value = true
                 }
                 const loadStorageUsage = async () => {
                     try { const response = await fetch('/api/v1/node/storage', { credentials: 'same-origin' }); const data = await response.json(); if (response.ok) storagePercent.value = Math.max(0, Math.min(100, Number(data.percentual_usado) || 0)); } catch (_) {}
@@ -92,7 +140,7 @@
 
                 let lastActivity = 0
                 const renewSessionFromInteraction = () => {
-                    if (!isUnlocked.value || Date.now() - lastActivity < 60000) return
+                    if (isApplicationClosed.value || !isUnlocked.value || Date.now() - lastActivity < 60000) return
                     lastActivity = Date.now()
                     fetch(`${window.location.origin}/api/v1/auth/activity`, { method: 'POST', credentials: 'same-origin' })
                         .then(response => { if (!response.ok) handleSessionExpired() })
@@ -111,6 +159,8 @@
                     composerContext,
                     sidebarCollapsed,
                     storagePercent,
+                    isApplicationClosed,
+                    theme,
                     activeNav,
                     idleNav,
                     handleAuthenticated,
@@ -119,7 +169,8 @@
                     openComposer,
                     editDraft,
                     composeComment,
-                    composeVersion
+                    composeVersion,
+                    updateTheme
                 }
             }
         }).mount('#app')

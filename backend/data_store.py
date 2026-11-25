@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from tempfile import mkdtemp
@@ -32,7 +33,11 @@ def _connect(database_path: Path, data_key: bytes):
     connection = sqlcipher.connect(database_path)
     try:
         connection.execute("PRAGMA key = \"x'" + data_key.hex() + "'\"")
-        connection.execute("PRAGMA cipher_memory_security = ON")
+        # SQLCipher para Windows pode encerrar o processo por estouro de pilha
+        # quando VirtualLock falha com esta proteção ativada. A base continua
+        # cifrada e autenticada; somente esse bloqueio de páginas é omitido.
+        if sys.platform != "win32":
+            connection.execute("PRAGMA cipher_memory_security = ON")
         connection.execute("SELECT count(*) FROM sqlite_master").fetchone()
         return connection
     except Exception as error:

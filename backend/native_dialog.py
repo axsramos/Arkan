@@ -18,6 +18,12 @@ _PIN_TEXT = "#e2e8f0"
 _PIN_MUTED_TEXT = "#94a3b8"
 
 
+def _pin_icon_path() -> Path:
+    """Localiza o favicon incluído no pacote de desenvolvimento ou PyInstaller."""
+    application_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
+    return application_root / "frontend" / "favicon.ico"
+
+
 def _root():
     if sys.platform != "win32":
         raise NativeDialogError("Diálogo nativo indisponível nesta plataforma.")
@@ -26,6 +32,24 @@ def _root():
 
         root = tk.Tk()
         root.withdraw()
+        root.attributes("-topmost", True)
+        return root
+    except Exception as error:
+        raise NativeDialogError("Diálogo nativo indisponível.") from error
+
+
+def _pin_root():
+    """Cria a janela visível e direta do diálogo de PIN."""
+    if sys.platform != "win32":
+        raise NativeDialogError("Diálogo nativo indisponível nesta plataforma.")
+    try:
+        import tkinter as tk
+
+        root = tk.Tk()
+        root.configure(bg=_PIN_BACKGROUND)
+        icon_path = _pin_icon_path()
+        if icon_path.is_file():
+            root.iconbitmap(default=str(icon_path))
         root.attributes("-topmost", True)
         return root
     except Exception as error:
@@ -44,12 +68,12 @@ class _PinDialog:
         import tkinter as tk
 
         self._result: str | None = None
-        self._value = tk.StringVar()
-        self._feedback = tk.StringVar()
-        self._window = tk.Toplevel(root, bg=_PIN_BACKGROUND)
+        self._window = root
+        self._value = tk.StringVar(master=root)
+        self._feedback = tk.StringVar(master=root)
+        self._window.configure(bg=_PIN_BACKGROUND)
         self._window.title(title)
         self._window.resizable(False, False)
-        self._window.transient(root)
         self._window.attributes("-topmost", True)
         self._window.protocol("WM_DELETE_WINDOW", self._cancel)
 
@@ -87,8 +111,11 @@ class _PinDialog:
         self._window.bind("<Escape>", self._cancel)
         self._window.update_idletasks()
         self._window.geometry(f"420x280+{(self._window.winfo_screenwidth() - 420) // 2}+{(self._window.winfo_screenheight() - 280) // 2}")
+        self._window.lift()
+        self._window.focus_force()
+        self._window.update()
         self._window.grab_set()
-        self._entry.focus_set()
+        self._entry.focus_force()
 
     def show(self) -> str | None:
         self._window.wait_window()
@@ -110,14 +137,17 @@ class _PinDialog:
 
 def collect_pin(title: str, prompt: str = "Informe o PIN local:") -> str:
     """Coleta o PIN apenas pelo diálogo nativo, sem passá-lo ao navegador."""
-    root = _root()
+    root = _pin_root()
     try:
         pin = _PinDialog(root, title, prompt).show()
         if not _is_valid_pin(pin):
             raise NativeDialogError("Coleta de PIN cancelada ou inválida.")
         return pin
     finally:
-        root.destroy()
+        try:
+            root.destroy()
+        except Exception:
+            pass
 
 
 def collect_new_pin() -> str:

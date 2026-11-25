@@ -17,7 +17,7 @@ from backend.session import IDLE_TIMEOUT_SECONDS, SESSION_COOKIE, SessionError, 
 from backend.data_store import DataStoreError, open_data_store
 from backend.vault import (
     VaultError, create_activation_material, create_invited_member_activation_material, create_recovery_activation_material, write_vault,
-    data_key_with_pin, identity_with_pin, load_vault,
+    data_key_with_pin, identity_with_data_key, load_vault,
 )
 
 router = APIRouter()
@@ -53,7 +53,7 @@ def _session_summary(identity: dict, data_key: bytes) -> dict[str, str]:
 def _create_session_from_pin(pin: str) -> tuple[str, dict[str, str]]:
     vault = load_vault(Path(STORAGE_DIR))
     data_key = data_key_with_pin(vault, pin)
-    identity = identity_with_pin(vault, pin)
+    identity = identity_with_data_key(vault, data_key)
     return sessions.create(data_key, identity), _session_summary(identity, data_key)
 
 

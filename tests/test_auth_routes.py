@@ -72,6 +72,17 @@ class AuthenticationRouteTests(unittest.TestCase):
             auth.sessions.destroy(token)
         self.assertEqual(result["percentual_usado"], 0.12)
 
+    def test_session_creation_derives_the_data_key_once(self):
+        data_key = b"d" * 32
+        identity = {"pseudonym": "Membro", "public_identity": {"member_id": "membro"}}
+        with patch.object(auth, "load_vault", return_value={}), patch.object(auth, "data_key_with_pin", return_value=data_key) as derive, patch.object(auth, "identity_with_data_key", return_value=identity) as open_identity, patch.object(auth, "_session_summary", return_value={"pseudonym": "Membro", "role": "MEMBRO"}):
+            token, _ = auth._create_session_from_pin(object())
+        try:
+            derive.assert_called_once()
+            open_identity.assert_called_once_with({}, data_key)
+        finally:
+            auth.sessions.destroy(token)
+
 
 if __name__ == "__main__":
     unittest.main()

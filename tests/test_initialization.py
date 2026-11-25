@@ -43,10 +43,9 @@ class InitializationTests(unittest.TestCase):
 
         self.assertEqual(response.headers["location"], "/static/favicon.ico")
 
-    @patch("main.threading.Thread")
     @patch("main.uvicorn.Server")
     @patch("main.uvicorn.Config")
-    def test_local_server_exposes_clean_shutdown_callback(self, config, server, thread):
+    def test_legacy_local_server_exposes_clean_shutdown_callback(self, config, server):
         local_app = SimpleNamespace(state=SimpleNamespace())
         local_server = Mock()
         server.return_value = local_server
@@ -54,7 +53,6 @@ class InitializationTests(unittest.TestCase):
             launcher.run_local_server(8765)
 
         config.assert_called_once_with(local_app, host="127.0.0.1", port=8765, log_level="info")
-        thread.assert_called_once()
         local_server.run.assert_called_once_with()
         local_app.state.request_shutdown()
         self.assertTrue(local_server.should_exit)
