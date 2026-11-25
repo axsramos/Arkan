@@ -1,8 +1,8 @@
 # Arkan
 
 <img src="https://img.shields.io/badge/license-owner-tomato" alt="Licença proprietária">
-<img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Versão 1.0.0">
-<img src="https://img.shields.io/badge/build-20261114113154-orange" alt="Build 20261114113154">
+<img src="https://img.shields.io/badge/version-1.1.0-blue" alt="Versão 1.1.0">
+<img src="https://img.shields.io/badge/build-20261125170901-orange" alt="Build 20261125170901">
 
 O Arkan é um aplicativo local e offline-first para criar, preservar e compartilhar manualmente artigos entre membros de uma rede privada. A primeira versão não depende de conta remota, hospedagem central, LAN, P2P ou sincronização automática.
 
@@ -93,7 +93,7 @@ Para compilar:
 .\venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --console --name Arkan --icon frontend\favicon.ico --add-data "frontend;frontend" main.py
 ```
 
-O empacotamento gera `dist\Arkan.exe` com uma janela de console visível para registros e diagnóstico. A interface local é aberta no navegador padrão e o serviço atende somente em `127.0.0.1`. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.0.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
+O empacotamento gera `dist\Arkan.exe` com uma janela de console visível para registros e diagnóstico. A interface local é aberta no navegador padrão e o serviço atende somente em `127.0.0.1`. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.1.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
 
 ## Versões e changelog
 
