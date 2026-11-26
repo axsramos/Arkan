@@ -6,6 +6,13 @@ O formato segue [Keep a Changelog 1.0.0](https://keepachangelog.com/pt-BR/1.0.0/
 
 ## [Não publicado]
 
+## [1.1.1] - 2026-11-26
+
+### Alterado
+
+- Preferências visuais locais passam a ser armazenadas em `data/settings.json`, mantendo uma cópia legada recuperável ao atualizar instalações existentes.
+- Distribuição portátil Windows em `dist/Arkan-1.1.1`.
+
 ## [1.1.0] - 2026-11-25
 
 ### Adicionado

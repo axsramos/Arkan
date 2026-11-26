@@ -5,7 +5,7 @@ from unittest.mock import patch
 import asyncio
 
 from backend.routers import settings as settings_router
-from backend.settings import DEFAULT_THEME, load_settings, save_theme
+from backend.settings import DEFAULT_THEME, load_settings, migrate_legacy_settings, save_theme
 
 
 class SettingsTests(unittest.TestCase):
@@ -39,8 +39,31 @@ class SettingsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             save_theme(self.path, "BLUE")
 
+    def test_migrates_valid_legacy_preference_without_removing_it(self):
+        legacy_path = Path(self.temporary_directory.name) / "settings.json"
+        destination_path = Path(self.temporary_directory.name) / "data" / "settings.json"
+        save_theme(legacy_path, "DARK")
+        save_theme(legacy_path, "LIGHT")
+
+        migrate_legacy_settings(legacy_path, destination_path)
+
+        self.assertEqual(load_settings(destination_path)["appearance"]["theme"], "LIGHT")
+        self.assertTrue(legacy_path.is_file())
+        self.assertTrue(legacy_path.with_suffix(".json.backup").is_file())
+        self.assertTrue(destination_path.with_suffix(".json.backup").is_file())
+
+    def test_does_not_migrate_invalid_legacy_preference(self):
+        legacy_path = Path(self.temporary_directory.name) / "settings.json"
+        destination_path = Path(self.temporary_directory.name) / "data" / "settings.json"
+        legacy_path.write_text('{"format_version": 99}', encoding="utf-8")
+
+        migrate_legacy_settings(legacy_path, destination_path)
+
+        self.assertFalse(destination_path.exists())
+
     def test_local_routes_return_and_update_the_theme(self):
-        with patch.object(settings_router, "SETTINGS_PATH", self.path):
+        legacy_path = Path(self.temporary_directory.name) / "legacy-settings.json"
+        with patch.object(settings_router, "SETTINGS_PATH", self.path), patch.object(settings_router, "LEGACY_SETTINGS_PATH", legacy_path):
             result = asyncio.run(settings_router.update_theme(settings_router.ThemePayload(theme="LIGHT")))
             current = asyncio.run(settings_router.get_settings())
 

@@ -1,8 +1,8 @@
 # Arkan
 
 <img src="https://img.shields.io/badge/license-owner-tomato" alt="Licença proprietária">
-<img src="https://img.shields.io/badge/version-1.1.0-blue" alt="Versão 1.1.0">
-<img src="https://img.shields.io/badge/build-20261125170901-orange" alt="Build 20261125170901">
+<img src="https://img.shields.io/badge/version-1.1.1-blue" alt="Versão 1.1.1">
+<img src="https://img.shields.io/badge/build-20261126090203-orange" alt="Build 20261126090203">
 
 O Arkan é um aplicativo local e offline-first para criar, preservar e compartilhar manualmente artigos entre membros de uma rede privada. A primeira versão não depende de conta remota, hospedagem central, LAN, P2P ou sincronização automática.
 
@@ -57,7 +57,7 @@ Em Windows, copie uma pasta de versão em `dist` para um pen drive ou outra past
 
 O diretório `data` será criado ao lado do executável durante a ativação. Ele contém o estado local cifrado. Não copie, publique ou versione esse diretório; use os fluxos de exportação e recuperação do aplicativo.
 
-As preferências visuais ficam em `settings.json`, também ao lado do executável. Esse arquivo versionado não contém cofre, PIN, identidade ou outra informação sensível; ele inicia no tema Escuro e preserva escolhas locais, como o tema da interface. A gravação mantém uma cópia anterior em `settings.json.backup`.
+As preferências visuais ficam em `data/settings.json`. Esse arquivo versionado não contém cofre, PIN, identidade ou outra informação sensível; ele inicia no tema Escuro e preserva escolhas locais, como o tema da interface. A gravação mantém uma cópia anterior em `data/settings.json.backup`. Ao atualizar uma cópia anterior, a preferência existente ao lado do executável é copiada para `data/` e mantida no local original como cópia recuperável.
 
 ### Validação obrigatória de uma distribuição Windows
 
@@ -93,7 +93,7 @@ Para compilar:
 .\venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --console --name Arkan --icon frontend\favicon.ico --add-data "frontend;frontend" main.py
 ```
 
-O empacotamento gera `dist\Arkan.exe` com uma janela de console visível para registros e diagnóstico. A interface local é aberta no navegador padrão e o serviço atende somente em `127.0.0.1`. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.1.0`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
+O empacotamento gera `dist\Arkan.exe` com uma janela de console visível para registros e diagnóstico. A interface local é aberta no navegador padrão e o serviço atende somente em `127.0.0.1`. Para publicar, mova-o para uma nova pasta versionada, por exemplo `dist\Arkan-1.1.1`, e inclua o arquivo de instruções. Nunca substitua uma pasta de versão existente.
 
 ## Versões e changelog
 
