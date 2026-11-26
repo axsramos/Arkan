@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from backend.content import ContentError, create_draft, delete_draft, list_drafts, publish_draft, review_draft, update_draft
 from backend.arkx import ArkxError, build_export, migrate_storage_schema, read_export, import_items
 from backend.library import LibraryError, remove_foreign_content, allow_reimport, get_local_classification, list_comments, list_headers, read_content, set_local_classification
-from backend.native_dialog import save_export_artifact
+from backend.native_dialog import NativeDialogError, save_export_artifact
 from backend.data_store import FORMAT_VERSION, DataStoreError, migrate_data_store, open_data_store, _read_manifest
 from backend.vault import VaultError
 from backend.session import SESSION_COOKIE, SessionError, sessions
@@ -226,7 +226,7 @@ async def export_content(mode: str, payload: ExportPayload, request: Request) ->
         return _with_content(request, write_export)
     except NativeDialogError as error:
         raise HTTPException(409, "A exportação foi cancelada no diálogo local.") from error
-    except (VaultError, DataStoreError, ArkxError, SessionError) as error:
+    except (VaultError, DataStoreError, ArkxError, ContentError, SessionError) as error:
         raise _error(error)
 
 
@@ -244,7 +244,7 @@ async def import_content(payload: DraftActionPayload, request: Request) -> dict:
         raise HTTPException(409, "A importação foi cancelada no diálogo local.") from error
     except ArkxError as error:
         raise HTTPException(400, str(error)) from error
-    except (VaultError, DataStoreError, ArkxError, SessionError) as error:
+    except (VaultError, DataStoreError, ContentError, SessionError) as error:
         raise _error(error)
 
 

@@ -6,6 +6,13 @@ O formato segue [Keep a Changelog 1.0.0](https://keepachangelog.com/pt-BR/1.0.0/
 
 ## [Não publicado]
 
+## [1.1.2] - 2026-11-26
+
+### Corrigido
+
+- Tratamento de falhas e cancelamentos nos diálogos de importação e exportação do acervo.
+- Distribuição portátil Windows em `dist/Arkan-1.1.2`.
+
 ## [1.1.1] - 2026-11-26
 
 ### Alterado
